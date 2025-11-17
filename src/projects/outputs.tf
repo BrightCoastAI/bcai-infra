@@ -13,3 +13,11 @@ output "project_numbers" {
     prod = google_project.prod.number
   }
 }
+
+output "environment_service_accounts" {
+  description = "Per-environment service account emails for automations."
+  value = {
+    dev  = google_service_account.environment["dev"].email
+    prod = google_service_account.environment["prod"].email
+  }
+}
