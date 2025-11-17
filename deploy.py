@@ -17,7 +17,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -88,6 +87,7 @@ def compare_versions(lhs: str, rhs: str) -> int:
     """
     Return -1 when lhs < rhs, 0 when equal, 1 when lhs > rhs.
     """
+
     def tokenize(version: str) -> List[int]:
         return [int(part) for part in re.split(r"[.+-]", version) if part.isdigit()]
 
@@ -115,17 +115,13 @@ def ensure_opentofu_version(tofu_bin: str) -> str:
             text=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:  # pragma: no cover - user env issue
-        raise SystemExit(
-            f"Unable to execute {' '.join(version_cmd)}: {exc}"
-        ) from exc
+        raise SystemExit(f"Unable to execute {' '.join(version_cmd)}: {exc}") from exc
 
     first_line = completed.stdout.splitlines()[0] if completed.stdout else ""
     match = re.search(r"OpenTofu v?([\d.]+)", first_line)
     version = match.group(1) if match else ""
     if not version:
-        raise SystemExit(
-            f"Could not parse OpenTofu version from output:\n{completed.stdout}"
-        )
+        raise SystemExit(f"Could not parse OpenTofu version from output:\n{completed.stdout}")
 
     console.print(f"[bold cyan]OpenTofu version detected:[/] {version}")
     if compare_versions(version, REQUIRED_OPENTOFU_VERSION) < 0:
@@ -176,7 +172,7 @@ def stream_command(
         output_lines.append(line)
 
     return_code = process.wait()
-    full_output = ''.join(output_lines)
+    full_output = "".join(output_lines)
     if return_code != 0:
         error = subprocess.CalledProcessError(return_code, command_list)
         error.output = full_output
@@ -190,8 +186,7 @@ def main() -> None:
     tofu_bin = args.tofu_bin
     if shutil.which(tofu_bin) is None:
         raise SystemExit(
-            f"OpenTofu binary '{tofu_bin}' not found. "
-            "Install OpenTofu or set TOFU_BIN to the desired path."
+            f"OpenTofu binary '{tofu_bin}' not found. " "Install OpenTofu or set TOFU_BIN to the desired path."
         )
 
     script_dir = Path(__file__).resolve().parent
@@ -208,13 +203,9 @@ def main() -> None:
         quota_project = read_quota_project(tf_vars_file)
         if quota_project:
             env["GOOGLE_CLOUD_QUOTA_PROJECT"] = quota_project
-            console.print(
-                f"[bold]Using quota project from terraform.tfvars:[/] {quota_project}"
-            )
+            console.print(f"[bold]Using quota project from terraform.tfvars:[/] {quota_project}")
         else:
-            console.print(
-                "[yellow]Warning: GOOGLE_CLOUD_QUOTA_PROJECT is not set; falling back to ADC defaults.[/]"
-            )
+            console.print("[yellow]Warning: GOOGLE_CLOUD_QUOTA_PROJECT is not set; falling back to ADC defaults.[/]")
     else:
         console.print(f"[bold]Using quota project from environment:[/] {quota_project}")
 
@@ -238,11 +229,11 @@ def main() -> None:
     except subprocess.CalledProcessError as exc:
         # Check for common authentication errors and provide helpful guidance
         error_output = ""
-        if hasattr(exc, 'output') and exc.output:
+        if hasattr(exc, "output") and exc.output:
             error_output = str(exc.output).lower()
-        
+
         help_text = f"Command failed with exit code {exc.returncode}:\n[dim]{shlex.join(exc.cmd)}[/]"
-        
+
         # Detect authentication errors
         if "could not find default credentials" in error_output or "authentication" in error_output:
             help_text += "\n\n[yellow]Authentication Issue Detected[/yellow]\n"
@@ -262,7 +253,7 @@ def main() -> None:
             help_text += "\n\n[yellow]State Bucket Issue Detected[/yellow]\n"
             help_text += "\nThe remote state bucket may not exist or you lack access.\n"
             help_text += "Verify the bucket exists: [cyan]gcloud storage ls gs://bc-prod-brightcoast-tfstate/[/cyan]"
-        
+
         console.print(
             Panel(
                 help_text,
@@ -283,9 +274,7 @@ def main() -> None:
         return
 
     if not args.auto_approve:
-        if not Confirm.ask(
-            "Apply this plan?", default=False, console=console, show_choices=True
-        ):
+        if not Confirm.ask("Apply this plan?", default=False, console=console, show_choices=True):
             console.print("[yellow]Aborting without applying changes.[/]")
             return
 
