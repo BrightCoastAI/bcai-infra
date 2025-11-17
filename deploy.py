@@ -156,7 +156,8 @@ def stream_command(
     *,
     env: Optional[dict[str, str]] = None,
     title: str,
-) -> None:
+) -> str:
+    """Stream command output and return captured output for error analysis."""
     command_list = list(command)
     console_rule(title)
     console.print(f"[cyan]$ {shlex.join(command_list)}[/]")
@@ -169,12 +170,18 @@ def stream_command(
     )
 
     assert process.stdout is not None
+    output_lines = []
     for line in process.stdout:
         console.print(line.rstrip())
+        output_lines.append(line)
 
     return_code = process.wait()
+    full_output = ''.join(output_lines)
     if return_code != 0:
-        raise subprocess.CalledProcessError(return_code, command_list)
+        error = subprocess.CalledProcessError(return_code, command_list)
+        error.output = full_output
+        raise error
+    return full_output
 
 
 def main() -> None:
@@ -229,9 +236,36 @@ def main() -> None:
         stream_command(init_cmd, env=env, title="Initializing OpenTofu")
         stream_command(plan_cmd, env=env, title="Generating OpenTofu Plan")
     except subprocess.CalledProcessError as exc:
+        # Check for common authentication errors and provide helpful guidance
+        error_output = ""
+        if hasattr(exc, 'output') and exc.output:
+            error_output = str(exc.output).lower()
+        
+        help_text = f"Command failed with exit code {exc.returncode}:\n[dim]{shlex.join(exc.cmd)}[/]"
+        
+        # Detect authentication errors
+        if "could not find default credentials" in error_output or "authentication" in error_output:
+            help_text += "\n\n[yellow]Authentication Issue Detected[/yellow]\n"
+            help_text += "\nYou need to authenticate with Google Cloud using an account with appropriate permissions.\n"
+            help_text += "Run these commands:\n\n"
+            help_text += "[cyan]gcloud auth login[/cyan]\n"
+            help_text += "[cyan]gcloud auth application-default login[/cyan]\n"
+            help_text += "\nIf you continue to see errors, you may also need to set:\n"
+            help_text += "[cyan]export GOOGLE_CLOUD_QUOTA_PROJECT=bc-prod-brightcoast[/cyan]"
+        elif "permission" in error_output or "forbidden" in error_output:
+            help_text += "\n\n[yellow]Permission Issue Detected[/yellow]\n"
+            help_text += "\nYour account may lack required permissions. Verify:\n"
+            help_text += "- You have access to the GCS state bucket (gs://bc-prod-brightcoast-tfstate)\n"
+            help_text += "- You have organization-level permissions to create projects\n"
+            help_text += "- You are a billing administrator on the Brightcoast billing account"
+        elif "bucket" in error_output and "not found" in error_output:
+            help_text += "\n\n[yellow]State Bucket Issue Detected[/yellow]\n"
+            help_text += "\nThe remote state bucket may not exist or you lack access.\n"
+            help_text += "Verify the bucket exists: [cyan]gcloud storage ls gs://bc-prod-brightcoast-tfstate/[/cyan]"
+        
         console.print(
             Panel(
-                f"Command failed with exit code {exc.returncode}:\n[dim]{shlex.join(exc.cmd)}[/]",
+                help_text,
                 title="OpenTofu command failed",
                 border_style="red",
             )

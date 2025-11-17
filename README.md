@@ -45,10 +45,15 @@ tofu version  # Should show OpenTofu v1.10.x or later
 1. **Install tooling** (see Installation section above)
 2. **Authenticate with Google Cloud**
    ```bash
-   gcloud auth login --account=core@brightcoast.ai
-   gcloud auth application-default login --account=core@brightcoast.ai
+   gcloud auth login
+   gcloud auth application-default login
    ```
-   If `GOOGLE_CLOUD_QUOTA_PROJECT` is required for admin APIs, set it to `bc-prod-brightcoast` before running OpenTofu.
+   Use an account with organization-level permissions and billing admin access.
+   
+   If `GOOGLE_CLOUD_QUOTA_PROJECT` is required for admin APIs, set it to `bc-prod-brightcoast` before running OpenTofu:
+   ```bash
+   export GOOGLE_CLOUD_QUOTA_PROJECT=bc-prod-brightcoast
+   ```
 3. **Run the wrapper**
    ```bash
    uv run deploy.py --plan-only      # tofu init + plan
