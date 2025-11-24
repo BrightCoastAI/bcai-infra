@@ -26,3 +26,20 @@ module "projects" {
   dev_additional_admins  = var.dev_additional_admins
   prod_additional_admins = var.prod_additional_admins
 }
+
+module "prefect" {
+  source = "./prefect"
+
+  for_each = module.projects.project_ids
+
+  project_id  = each.value
+  environment = each.key
+  region      = var.default_region
+  labels = merge(
+    local.base_labels,
+    {
+      environment = each.key
+      cost_center = each.key
+    }
+  )
+}
