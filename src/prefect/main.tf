@@ -268,7 +268,7 @@ resource "google_cloud_run_service" "prefect_worker" {
   template {
     metadata {
       annotations = {
-        "autoscaling.knative.dev/minScale" = "0"
+        "autoscaling.knative.dev/minScale" = "1"
         "run.googleapis.com/cpu-throttling" = "false"
       }
       labels = merge(local.labels, { component = "prefect-worker" })
@@ -313,6 +313,16 @@ resource "google_cloud_run_service" "prefect_worker" {
         }
 
         env {
+          name  = "PREFECT_API_ENABLE_HTTP2"
+          value = "false"
+        }
+
+        env {
+          name  = "PREFECT_DEBUG_MODE"
+          value = "1"
+        }
+
+        env {
           name = "PREFECT_API_AUTH_STRING"
           value_from {
             secret_key_ref {
@@ -338,7 +348,7 @@ resource "google_cloud_run_service" "prefect_worker" {
             # Ensure Cloud Run worker type is available.
             pip install --no-cache-dir "prefect-gcp>=0.6.0" >/tmp/prefect-gcp-install.log 2>&1 || true
 
-            prefect work-pool create "$${POOL_NAME}" --type cloud-run || true
+            prefect work-pool create "$${POOL_NAME}" --type cloud-run --overwrite || true
 
             prefect worker start --type cloud-run --pool "$${POOL_NAME}" --name "$${WORKER_NAME}"
           EOT
