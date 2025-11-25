@@ -6,13 +6,13 @@ locals {
 }
 
 resource "random_password" "db" {
-  length              = 24
-  special             = true
+  length  = 24
+  special = true
 }
 
 resource "random_password" "api_auth_password" {
-  length              = 20
-  special             = false
+  length  = 20
+  special = false
 }
 
 locals {
@@ -130,6 +130,12 @@ resource "google_project_iam_member" "prefect_runtime_roles" {
   member  = "serviceAccount:${google_service_account.prefect.email}"
 }
 
+resource "google_service_account_iam_member" "prefect_act_as_self" {
+  service_account_id = google_service_account.prefect.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.prefect.email}"
+}
+
 resource "google_cloud_run_service" "prefect_api" {
   name     = "${local.name_prefix}-api"
   location = var.region
@@ -153,7 +159,7 @@ resource "google_cloud_run_service" "prefect_api" {
     }
 
     spec {
-      service_account_name = google_service_account.prefect.email
+      service_account_name  = google_service_account.prefect.email
       container_concurrency = 10
 
       containers {
@@ -268,14 +274,14 @@ resource "google_cloud_run_service" "prefect_worker" {
   template {
     metadata {
       annotations = {
-        "autoscaling.knative.dev/minScale" = "1"
+        "autoscaling.knative.dev/minScale"  = "1"
         "run.googleapis.com/cpu-throttling" = "false"
       }
       labels = merge(local.labels, { component = "prefect-worker" })
     }
 
     spec {
-      service_account_name = google_service_account.prefect.email
+      service_account_name  = google_service_account.prefect.email
       container_concurrency = 1
 
       containers {
