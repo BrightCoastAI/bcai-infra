@@ -9,6 +9,10 @@ locals {
     "logging.googleapis.com",
     "monitoring.googleapis.com",
     "storage.googleapis.com",
+    "run.googleapis.com",
+    "sqladmin.googleapis.com",
+    "secretmanager.googleapis.com",
+    "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
     # Google Workspace APIs used by n8n nodes
     "admin.googleapis.com",

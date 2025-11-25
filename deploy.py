@@ -64,6 +64,9 @@ def parse_args() -> tuple[argparse.Namespace, List[str]]:
     )
 
     args, passthrough = parser.parse_known_args()
+    # If callers include an extra "--" to separate args, strip it before passing to OpenTofu.
+    if passthrough and passthrough[0] == "--":
+        passthrough = passthrough[1:]
     return args, passthrough
 
 
