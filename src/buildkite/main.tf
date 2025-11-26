@@ -20,6 +20,10 @@ locals {
     "secretmanager.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
+    "cloudfunctions.googleapis.com",
+    "run.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudscheduler.googleapis.com",
   ]
 
   owner_members = distinct(
@@ -33,14 +37,6 @@ locals {
       )
     )
   )
-
-  buildkite_agent_roles = [
-    "roles/logging.logWriter",
-    "roles/monitoring.metricWriter",
-    "roles/storage.objectViewer",
-    "roles/artifactregistry.reader",
-    "roles/secretmanager.secretAccessor",
-  ]
 }
 
 resource "google_project" "ci" {
@@ -79,73 +75,49 @@ resource "google_project_iam_member" "service_account_admins" {
   member  = each.key
 }
 
-resource "google_service_account" "buildkite_agents" {
-  project      = google_project.ci.project_id
-  account_id   = "buildkite-agents"
-  display_name = "Buildkite agents"
-  description  = "Runs the Buildkite Elastic CI stack in the CI hub project."
-}
-
-resource "google_project_iam_member" "buildkite_agent_roles" {
-  for_each = toset(local.buildkite_agent_roles)
-
-  project = google_project.ci.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.buildkite_agents.email}"
-}
-
 resource "google_secret_manager_secret" "buildkite_agent_token" {
   project   = google_project.ci.project_id
-  secret_id = "buildkite-agent-token"
+  secret_id = var.agent_token_secret_id
 
   replication {
     auto {}
   }
 
   labels = local.labels
-}
-
-resource "google_compute_network" "buildkite" {
-  name                    = var.network_name
-  project                 = google_project.ci.project_id
-  auto_create_subnetworks = false
 
   depends_on = [google_project_service.ci]
 }
 
-resource "google_compute_subnetwork" "buildkite" {
-  name                     = "${var.network_name}-subnet"
-  project                  = google_project.ci.project_id
-  region                   = var.region
-  ip_cidr_range            = var.subnet_cidr
-  private_ip_google_access = true
-  network                  = google_compute_network.buildkite.id
+data "google_secret_manager_secret_version" "source_agent_token" {
+  count = var.seed_agent_secret ? 1 : 0
 
-  depends_on = [google_project_service.ci]
+  project = var.source_agent_secret_project_id
+  secret  = var.source_agent_secret_name
+  version = "latest"
 }
 
-resource "google_compute_router" "buildkite" {
-  name    = "${var.network_name}-router"
-  project = google_project.ci.project_id
-  region  = var.region
-  network = google_compute_network.buildkite.id
+resource "google_secret_manager_secret_version" "buildkite_agent_token" {
+  count = var.seed_agent_secret ? 1 : 0
 
-  depends_on = [google_project_service.ci]
+  secret      = google_secret_manager_secret.buildkite_agent_token.id
+  secret_data = data.google_secret_manager_secret_version.source_agent_token[0].secret_data
 }
 
-resource "google_compute_router_nat" "buildkite" {
-  name   = "${var.network_name}-nat"
-  region = var.region
-  router = google_compute_router.buildkite.name
-  project = google_project.ci.project_id
+module "buildkite_stack" {
+  source = "github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp"
 
-  nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
+  project_id                   = google_project.ci.project_id
+  region                       = var.region
+  buildkite_organization_slug  = var.buildkite_organization_slug
+  buildkite_agent_token_secret = var.agent_token_secret_id
 
-  subnetwork {
-    name                    = google_compute_subnetwork.buildkite.id
-    source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
-  }
+  stack_name      = var.stack_name
+  buildkite_queue = var.buildkite_queue
+  min_size        = var.agent_min_replicas
+  max_size        = var.agent_max_replicas
+  machine_type    = var.agent_machine_type
+  labels          = local.labels
+  zones           = ["${var.region}-a", "${var.region}-b"]
 
   depends_on = [google_project_service.ci]
 }
@@ -155,5 +127,5 @@ resource "google_service_account_iam_member" "impersonation" {
 
   service_account_id = "projects/-/serviceAccounts/${each.value}"
   role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:${google_service_account.buildkite_agents.email}"
+  member             = "serviceAccount:${module.buildkite_stack.agent_service_account_email}"
 }
