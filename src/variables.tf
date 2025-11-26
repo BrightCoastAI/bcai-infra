@@ -20,6 +20,12 @@ variable "prod_project_folder_id" {
   default     = null
 }
 
+variable "ci_project_folder_id" {
+  description = "Optional folder ID for the CI/Buildkite project. Leave null to attach directly to the organization."
+  type        = string
+  default     = null
+}
+
 variable "default_region" {
   description = "Primary region for resources and CMEK."
   type        = string
@@ -48,6 +54,24 @@ variable "prod_additional_admins" {
   description = "Extra IAM member strings that should have owner access in the prod project."
   type        = list(string)
   default     = []
+}
+
+variable "ci_additional_admins" {
+  description = "Extra IAM member strings that should have owner access in the CI project."
+  type        = list(string)
+  default     = []
+}
+
+variable "buildkite_project_id" {
+  description = "Project ID to create for the Buildkite CI hub."
+  type        = string
+  default     = "bc-ci-brightcoast"
+}
+
+variable "buildkite_project_name" {
+  description = "Display name for the Buildkite CI hub project."
+  type        = string
+  default     = "bc-ci"
 }
 
 variable "quota_project_id" {

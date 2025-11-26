@@ -27,6 +27,22 @@ module "projects" {
   prod_additional_admins = var.prod_additional_admins
 }
 
+module "buildkite" {
+  source = "./buildkite"
+
+  organization_id        = var.organization_id
+  billing_account_id     = var.billing_account_id
+  folder_id              = var.ci_project_folder_id
+  project_id             = var.buildkite_project_id
+  project_name           = var.buildkite_project_name
+  region                 = var.default_region
+  base_labels            = local.base_labels
+  core_admin_account     = var.core_admin_account
+  platform_owner_account = var.platform_owner_account
+  additional_admins      = var.ci_additional_admins
+  target_service_accounts = module.projects.environment_service_accounts
+}
+
 module "prefect" {
   source = "./prefect"
 
