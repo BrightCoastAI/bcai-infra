@@ -119,7 +119,16 @@ module "buildkite_stack" {
   labels          = local.labels
   zones           = ["${var.region}-a", "${var.region}-b"]
 
+  ssh_key_secret_id = "buildkite-ssh-key"
+
   depends_on = [google_project_service.ci]
+}
+
+resource "google_secret_manager_secret_iam_member" "agent_ssh_key_access" {
+  project   = google_project.ci.project_id
+  secret_id = "buildkite-ssh-key"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.buildkite_stack.agent_service_account_email}"
 }
 
 resource "google_service_account_iam_member" "impersonation" {
