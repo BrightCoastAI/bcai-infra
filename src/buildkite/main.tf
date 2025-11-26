@@ -104,7 +104,7 @@ resource "google_secret_manager_secret_version" "buildkite_agent_token" {
 }
 
 module "buildkite_stack" {
-  source = "github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp"
+  source = "../vendor/buildkite_stack"
 
   project_id                   = google_project.ci.project_id
   region                       = var.region
