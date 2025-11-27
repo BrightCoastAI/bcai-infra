@@ -38,6 +38,19 @@ sed -i "s~# endpoint=.*~endpoint=\"${buildkite_api_endpoint}\"~g" /etc/buildkite
 sed -i "s/# tags=.*/tags=\"${buildkite_agent_tags}\"/g" /etc/buildkite-agent/buildkite-agent.cfg
 %{ endif ~}
 
+echo "Installing Docker engine..."
+install -d -m 0755 /etc/apt/keyrings
+if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+  curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+fi
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(grep VERSION_CODENAME /etc/os-release | cut -d= -f2) stable" > /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+systemctl enable docker
+systemctl start docker
+usermod -a -G docker buildkite-agent
+
 %{ if ssh_key_secret_id != "" ~}
 echo "Installing SSH key for repository access..."
 install -d -m 0700 -o buildkite-agent -g buildkite-agent /var/lib/buildkite-agent/.ssh
