@@ -368,3 +368,11 @@ resource "google_cloud_run_service" "prefect_worker" {
     latest_revision = true
   }
 }
+
+resource "google_storage_bucket" "cache" {
+  name                        = "bcai-prefect-cache-${var.environment}"
+  location                    = var.region
+  project                     = var.project_id
+  uniform_bucket_level_access = true
+  labels                      = local.labels
+}
