@@ -67,3 +67,11 @@ module "prefect" {
     }
   )
 }
+
+resource "google_project_iam_member" "ci_admin_access" {
+  for_each = module.projects.project_ids
+
+  project = each.value
+  role    = "roles/owner"
+  member  = "serviceAccount:${module.buildkite.agent_service_account_email}"
+}

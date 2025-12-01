@@ -112,7 +112,7 @@ fi
 if ! command -v bcai &> /dev/null; then
   echo "--- :inbox_tray: Installing 'bcai' CLI from Main"
   # Use SSH URL since keys are set up
-  uv tool install --force --quiet "git+ssh://git@github.com/BrightCoastAI/bcai-cli.git@main"
+  uv tool install --force "git+ssh://git@github.com/BrightCoastAI/bcai-cli.git@main"
 fi
 
 # Verify installation
