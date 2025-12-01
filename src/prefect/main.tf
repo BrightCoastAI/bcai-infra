@@ -1,8 +1,8 @@
 locals {
   name_prefix    = "prefect-${var.environment}"
   labels         = merge(var.labels, { environment = var.environment, component = "prefect" })
-  work_pool_name = "${var.environment}-cloud-run-pool"
-  worker_name    = "${var.environment}-cloud-run-worker"
+  work_pool_name = "gcp-cloud-run-pool"
+  worker_name    = "gcp-cloud-run-worker"
 }
 
 resource "random_password" "db" {
@@ -367,4 +367,12 @@ resource "google_cloud_run_service" "prefect_worker" {
     percent         = 100
     latest_revision = true
   }
+}
+
+resource "google_storage_bucket" "cache" {
+  name                        = "bcai-prefect-cache-${var.environment}"
+  location                    = var.region
+  project                     = var.project_id
+  uniform_bucket_level_access = true
+  labels                      = local.labels
 }

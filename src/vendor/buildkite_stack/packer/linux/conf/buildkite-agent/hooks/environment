@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Environment hook for Buildkite agent on GCP
+# This hook sets up the environment for each build
+
+echo "--- Setting up build environment"
+
+# Load local environment file if it exists
+if [[ -f /etc/buildkite-agent/env ]]; then
+  echo "Loading environment from /etc/buildkite-agent/env"
+  set -a
+  source /etc/buildkite-agent/env
+  set +a
+fi
+
+# Load secrets from local environment (not S3 as per v1.0.0 requirements)
+if [[ -f /etc/buildkite-agent/secrets ]]; then
+  echo "Loading secrets from local file"
+  set -a
+  source /etc/buildkite-agent/secrets
+  set +a
+fi
+
+# Set GCP-specific environment variables
+export BUILDKITE_GCP_PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_INSTANCE_ID=$(gcp-metadata instance-id 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_MACHINE_TYPE=$(gcp-metadata machine-type 2>/dev/null || echo "unknown")
+
+# Fetch SSH keys from GCP Secret Manager and load into ssh-agent
+echo "Checking GCP Secret Manager for SSH keys..."
+
+SSH_KEY_NAMES=(
+  "${BUILDKITE_PIPELINE_SLUG}/private_ssh_key"
+  "${BUILDKITE_PIPELINE_SLUG}/id_rsa_github"
+  "private_ssh_key"
+  "id_rsa_github"
+)
+
+SSH_KEYS_LOADED=0
+SSH_AGENT_STARTED=0
+
+for key_name in "${SSH_KEY_NAMES[@]}"; do
+  echo "Checking for $key_name..."
+  
+  # Try to fetch the secret directly - secretAccessor role allows versions.access but not secrets.get
+  if KEY_CONTENT=$(gcloud secrets versions access latest --secret="$key_name" --project="${BUILDKITE_GCP_PROJECT_ID}" 2>/dev/null); then
+    KEY_SIZE=$(echo -n "$KEY_CONTENT" | wc -c)
+    echo "Found SSH key: $key_name ($KEY_SIZE bytes)"
+    
+    # Start ssh-agent if not already started
+    if [[ $SSH_AGENT_STARTED -eq 0 ]]; then
+      eval "$(ssh-agent -s)"
+      SSH_AGENT_STARTED=1
+      echo "Started ephemeral ssh-agent (pid $SSH_AGENT_PID)"
+    fi
+    
+    # Load the key into ssh-agent
+    echo "$KEY_CONTENT" | ssh-add - 2>/dev/null
+    echo "Loaded $key_name into ssh-agent (pid $SSH_AGENT_PID)"
+    SSH_KEYS_LOADED=$((SSH_KEYS_LOADED + 1))
+  fi
+done
+
+if [[ $SSH_KEYS_LOADED -eq 0 ]]; then
+  echo "No SSH keys found in Secret Manager"
+fi
+
+echo "Environment setup complete"

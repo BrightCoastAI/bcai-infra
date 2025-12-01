@@ -32,7 +32,7 @@ from rich.traceback import install as install_rich_traceback
 install_rich_traceback(show_locals=True)
 console = Console()
 
-REQUIRED_OPENTOFU_VERSION = "1.6.0"
+REQUIRED_OPENTOFU_VERSION = "1.9.0"
 
 
 def parse_args() -> tuple[argparse.Namespace, List[str]]:

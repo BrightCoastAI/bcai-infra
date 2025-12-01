@@ -32,3 +32,38 @@ output "prefect_database_secrets" {
   description = "Secret Manager IDs containing Prefect database URLs."
   value       = { for env, mod in module.prefect : env => mod.database_secret_id }
 }
+
+output "buildkite_project_id" {
+  description = "Project ID for the Buildkite CI hub."
+  value       = module.buildkite.project_id
+}
+
+output "buildkite_project_number" {
+  description = "Project number for the Buildkite CI hub."
+  value       = module.buildkite.project_number
+}
+
+output "buildkite_agent_service_account" {
+  description = "Service account email used by Buildkite agents."
+  value       = module.buildkite.agent_service_account_email
+}
+
+output "buildkite_agent_queue_name" {
+  description = "Queue name Buildkite agents should register against."
+  value       = module.buildkite.buildkite_queue
+}
+
+output "buildkite_agent_token_secret" {
+  description = "Secret Manager ID that will store the Buildkite agent token."
+  value       = module.buildkite.agent_token_secret_id
+}
+
+output "buildkite_network" {
+  description = "VPC network created for the Buildkite Elastic CI stack."
+  value       = module.buildkite.network_name
+}
+
+output "buildkite_instance_group_manager" {
+  description = "Managed instance group name powering Buildkite agents."
+  value       = module.buildkite.instance_group_manager_name
+}
