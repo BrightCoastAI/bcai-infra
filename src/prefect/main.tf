@@ -1,8 +1,8 @@
 locals {
   name_prefix    = "prefect-${var.environment}"
   labels         = merge(var.labels, { environment = var.environment, component = "prefect" })
-  work_pool_name = "${var.environment}-cloud-run-pool"
-  worker_name    = "${var.environment}-cloud-run-worker"
+  work_pool_name = "gcp-cloud-run-pool"
+  worker_name    = "gcp-cloud-run-worker"
 }
 
 resource "random_password" "db" {
