@@ -206,6 +206,18 @@ resource "google_cloud_run_service" "prefect_api" {
           value = "INFO"
         }
 
+        # Ensure event-driven automations are enabled (Prefect accepts both
+        # PREFECT_API_* and PREFECT_SERVER_* prefixes; we standardize on API).
+        env {
+          name  = "PREFECT_API_SERVICES_TRIGGERS_ENABLED"
+          value = "true"
+        }
+
+        env {
+          name  = "PREFECT_API_SERVICES_EVENT_PERSISTER_ENABLED"
+          value = "true"
+        }
+
         env {
           name = "PREFECT_SERVER_API_AUTH_STRING"
           value_from {

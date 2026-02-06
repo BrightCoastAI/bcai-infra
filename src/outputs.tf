@@ -33,6 +33,34 @@ output "prefect_database_secrets" {
   value       = { for env, mod in module.prefect : env => mod.database_secret_id }
 }
 
+output "openclaw_instance_name" {
+  description = "Name of the OpenClaw VM instance."
+  value       = module.openclaw.instance_name
+}
+
+output "openclaw_instance_internal_ip" {
+  description = "Internal IP address of the OpenClaw VM."
+  value       = module.openclaw.instance_internal_ip
+}
+
+output "openclaw_instance_external_ip" {
+  description = "External IP address of the OpenClaw VM (if enabled)."
+  value       = module.openclaw.instance_external_ip
+}
+
+output "openclaw_service_account" {
+  description = "Service account email used by the OpenClaw VM."
+  value       = module.openclaw.service_account_email
+}
+
+output "openclaw_secrets" {
+  description = "Secret Manager IDs for OpenClaw Slack tokens."
+  value = {
+    app = module.openclaw.app_token_secret_id
+    bot = module.openclaw.bot_token_secret_id
+  }
+}
+
 output "buildkite_project_id" {
   description = "Project ID for the Buildkite CI hub."
   value       = module.buildkite.project_id

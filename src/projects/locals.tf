@@ -8,6 +8,7 @@ locals {
     "cloudbilling.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "oslogin.googleapis.com",
     "storage.googleapis.com",
     "run.googleapis.com",
     "sqladmin.googleapis.com",

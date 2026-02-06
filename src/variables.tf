@@ -32,6 +32,54 @@ variable "default_region" {
   default     = "australia-southeast1"
 }
 
+variable "openclaw_zone" {
+  description = "Zone for the OpenClaw VM."
+  type        = string
+  default     = "australia-southeast1-a"
+}
+
+variable "openclaw_machine_type" {
+  description = "Machine type for the OpenClaw VM."
+  type        = string
+  default     = "e2-small"
+}
+
+variable "openclaw_disk_size_gb" {
+  description = "Boot disk size (GB) for the OpenClaw VM."
+  type        = number
+  default     = 30
+}
+
+variable "openclaw_subnet_cidr" {
+  description = "CIDR block for the OpenClaw subnet."
+  type        = string
+  default     = "10.60.0.0/24"
+}
+
+variable "openclaw_ssh_source_ranges" {
+  description = "Source ranges allowed to SSH into the OpenClaw VM."
+  type        = list(string)
+  default     = ["35.235.240.0/20"]
+}
+
+variable "openclaw_enable_external_ip" {
+  description = "Whether to assign a public IP to the OpenClaw VM."
+  type        = bool
+  default     = true
+}
+
+variable "openclaw_app_token_secret_id" {
+  description = "Secret Manager secret ID storing the Slack app token."
+  type        = string
+  default     = "openclaw-slack-app-token"
+}
+
+variable "openclaw_bot_token_secret_id" {
+  description = "Secret Manager secret ID storing the Slack bot token."
+  type        = string
+  default     = "openclaw-slack-bot-token"
+}
+
 variable "core_admin_account" {
   description = "Email for the core admin owner of the organization."
   type        = string

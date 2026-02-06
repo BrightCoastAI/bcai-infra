@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y ca-certificates curl gnupg jq
+
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+
+npm install -g openclaw@latest
+
+if ! id -u openclaw >/dev/null 2>&1; then
+  useradd --system --home /opt/openclaw --shell /usr/sbin/nologin openclaw
+fi
+
+install -d -m 700 -o openclaw -g openclaw /opt/openclaw/.openclaw
+install -d -m 700 -o openclaw -g openclaw /opt/openclaw/.openclaw/state
+
+cat >/usr/local/bin/openclaw-refresh-config <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ID="${project_id}"
+APP_SECRET_ID="${app_secret_id}"
+BOT_SECRET_ID="${bot_secret_id}"
+
+fetch_access_token() {
+  curl -s -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" \
+    | jq -r '.access_token'
+}
+
+fetch_secret() {
+  local secret_id="$1"
+  local access_token
+
+  access_token="$(fetch_access_token)"
+  curl -s -H "Authorization: Bearer $${access_token}" \
+    "https://secretmanager.googleapis.com/v1/projects/$${PROJECT_ID}/secrets/$${secret_id}/versions/latest:access" \
+    | jq -r '.payload.data' \
+    | base64 -d
+}
+
+app_token="$(fetch_secret "$${APP_SECRET_ID}")"
+bot_token="$(fetch_secret "$${BOT_SECRET_ID}")"
+
+install -d -m 700 -o openclaw -g openclaw /opt/openclaw/.openclaw
+cat > /opt/openclaw/.openclaw/config.json <<CONFIG
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789
+  },
+  "channels": {
+    "slack": {
+      "enabled": true,
+      "appToken": "$${app_token}",
+      "botToken": "$${bot_token}"
+    }
+  }
+}
+CONFIG
+
+chown openclaw:openclaw /opt/openclaw/.openclaw/config.json
+chmod 600 /opt/openclaw/.openclaw/config.json
+SCRIPT
+
+chmod 755 /usr/local/bin/openclaw-refresh-config
+
+cat >/etc/systemd/system/openclaw.service <<'UNIT'
+[Unit]
+Description=OpenClaw Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openclaw
+Group=openclaw
+WorkingDirectory=/opt/openclaw
+Environment=HOME=/opt/openclaw
+Environment=OPENCLAW_CONFIG_PATH=/opt/openclaw/.openclaw/config.json
+Environment=OPENCLAW_STATE_DIR=/opt/openclaw/.openclaw/state
+ExecStartPre=/usr/local/bin/openclaw-refresh-config
+ExecStart=/usr/bin/env openclaw gateway --port 18789
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now openclaw
