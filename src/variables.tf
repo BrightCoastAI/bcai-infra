@@ -41,7 +41,7 @@ variable "openclaw_zone" {
 variable "openclaw_machine_type" {
   description = "Machine type for the OpenClaw VM."
   type        = string
-  default     = "e2-small"
+  default     = "e2-medium"
 }
 
 variable "openclaw_disk_size_gb" {

@@ -28,7 +28,7 @@ variable "name_prefix" {
 variable "machine_type" {
   description = "Machine type for the OpenClaw VM."
   type        = string
-  default     = "e2-small"
+  default     = "e2-medium"
 }
 
 variable "boot_disk_size_gb" {

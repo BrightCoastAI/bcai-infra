@@ -350,6 +350,26 @@ resource "google_cloud_run_service" "prefect_worker" {
           }
         }
 
+        env {
+          name  = "PREFECT_API_AUTH_SECRET_NAME"
+          value = google_secret_manager_secret.api_auth.secret_id
+        }
+
+        env {
+          name  = "WORKER_REGION"
+          value = var.region
+        }
+
+        env {
+          name  = "WORKER_SERVICE_ACCOUNT"
+          value = google_service_account.prefect.email
+        }
+
+        env {
+          name  = "WORKER_IMAGE"
+          value = var.prefect_image
+        }
+
         command = ["/bin/sh"]
         args = [
           "-c",
@@ -363,10 +383,95 @@ resource "google_cloud_run_service" "prefect_worker" {
             # Lightweight health endpoint for Cloud Run readiness/liveness.
             python -m http.server "$${PORT}" >/tmp/health.log 2>&1 &
 
-            # Ensure Cloud Run worker type is available.
+            # Ensure Cloud Run worker type is available (no-op when using custom image).
             pip install --no-cache-dir "prefect-gcp>=0.6.0" >/tmp/prefect-gcp-install.log 2>&1 || true
 
-            prefect work-pool create "$${POOL_NAME}" --type cloud-run --overwrite || true
+            # Create pool only if it doesn't exist yet (never --overwrite).
+            prefect work-pool inspect "$${POOL_NAME}" >/dev/null 2>&1 || \
+              prefect work-pool create "$${POOL_NAME}" --type cloud-run
+
+            # Patch the work pool base job template so spawned Cloud Run jobs
+            # inherit the API URL, auth credentials, region, service account,
+            # and image from the worker's environment.
+            python3 - <<'PYEOF'
+            import base64
+            import os
+
+            import httpx
+
+            api_url = os.environ["PREFECT_API_URL"].rstrip("/")
+            auth = os.environ.get("PREFECT_API_AUTH_STRING", "")
+            pool_name = os.environ["PREFECT_WORK_POOL_NAME"]
+            region = os.environ.get("WORKER_REGION", "australia-southeast1")
+            service_account = os.environ.get("WORKER_SERVICE_ACCOUNT", "")
+            image = os.environ.get("WORKER_IMAGE", "")
+            auth_secret_name = os.environ.get("PREFECT_API_AUTH_SECRET_NAME", "")
+
+            headers = {}
+            if auth:
+                b64 = base64.b64encode(auth.encode()).decode()
+                headers["Authorization"] = f"Basic {b64}"
+
+            resp = httpx.get(f"{api_url}/work_pools/{pool_name}", headers=headers, timeout=30.0)
+            resp.raise_for_status()
+            pool = resp.json()
+
+            template = pool.get("base_job_template") or {}
+            variables = template.get("variables") or {}
+            properties = variables.get("properties") or {}
+
+            changed = False
+
+            def set_default(property_name: str, value: str) -> bool:
+                prop = properties.get(property_name)
+                if not isinstance(prop, dict) or not value:
+                    return False
+                if prop.get("default") == value:
+                    return False
+                prop["default"] = value
+                return True
+
+            changed = set_default("region", region) or changed
+            changed = set_default("service_account_name", service_account) or changed
+            changed = set_default("image", image) or changed
+
+            env_prop = properties.get("env")
+            if isinstance(env_prop, dict):
+                current_env_default = env_prop.get("default")
+                if not isinstance(current_env_default, dict):
+                    current_env_default = {}
+
+                new_env_default = dict(current_env_default)
+                new_env_default["PREFECT_API_URL"] = api_url
+
+                auth_added_via_secret_selector = False
+                auth_secret_prop = properties.get("prefect_api_auth_string_secret")
+                if auth_secret_name and isinstance(auth_secret_prop, dict):
+                    secret_selector = {"secret": auth_secret_name, "version": "latest"}
+                    if auth_secret_prop.get("default") != secret_selector:
+                        auth_secret_prop["default"] = secret_selector
+                        changed = True
+                    auth_added_via_secret_selector = True
+
+                if auth and not auth_added_via_secret_selector:
+                    new_env_default["PREFECT_API_AUTH_STRING"] = auth
+
+                if current_env_default != new_env_default:
+                    env_prop["default"] = new_env_default
+                    changed = True
+
+            if changed:
+                resp = httpx.patch(
+                    f"{api_url}/work_pools/{pool_name}",
+                    headers=headers,
+                    json={"base_job_template": template},
+                    timeout=30.0,
+                )
+                resp.raise_for_status()
+                print("Work pool template updated successfully")
+            else:
+                print("Work pool template already up to date")
+            PYEOF
 
             prefect worker start --type cloud-run --pool "$${POOL_NAME}" --name "$${WORKER_NAME}"
           EOT
