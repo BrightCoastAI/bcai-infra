@@ -208,7 +208,7 @@ resource "google_cloud_run_service" "cos" {
             set -euo pipefail
             PORT="$${PORT:-8080}"
             python -m http.server "$${PORT}" &>/dev/null &
-            exec python -m scripts.run_local --profile "$${COS_PROFILE}" loop
+            exec cos --profile "$${COS_PROFILE}" loop
           EOT
         ]
       }
