@@ -95,15 +95,15 @@ module "openclaw" {
 module "cos" {
   source = "./cos"
 
-  project_id  = module.projects.project_ids["dev"]
-  environment = "dev"
+  project_id  = module.projects.project_ids["prod"]
+  environment = "prod"
   region      = var.default_region
   cos_profile = "dev"
   labels = merge(
     local.base_labels,
     {
-      environment = "dev"
-      cost_center = "dev"
+      environment = "prod"
+      cost_center = "prod"
     }
   )
 }
