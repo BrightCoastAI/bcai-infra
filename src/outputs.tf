@@ -98,27 +98,27 @@ output "buildkite_instance_group_manager" {
 
 # ── COS ──────────────────────────────────────────────────────────────────
 
-output "cos_service_urls" {
-  description = "Per-environment COS Cloud Run service URLs."
-  value       = { for env, mod in module.cos : env => mod.service_url }
+output "cos_service_url" {
+  description = "COS Cloud Run service URL."
+  value       = module.cos.service_url
 }
 
-output "cos_service_accounts" {
-  description = "Per-environment service accounts running COS."
-  value       = { for env, mod in module.cos : env => mod.service_account_email }
+output "cos_service_account" {
+  description = "Service account running COS."
+  value       = module.cos.service_account_email
 }
 
-output "cos_database_connection_names" {
-  description = "Per-environment Cloud SQL instance connection names for COS."
-  value       = { for env, mod in module.cos : env => mod.database_connection_name }
+output "cos_database_connection_name" {
+  description = "Cloud SQL instance connection name for COS."
+  value       = module.cos.database_connection_name
 }
 
-output "cos_database_secrets" {
-  description = "Secret Manager IDs containing COS database URLs."
-  value       = { for env, mod in module.cos : env => mod.database_secret_id }
+output "cos_database_secret" {
+  description = "Secret Manager ID containing the COS database URL."
+  value       = module.cos.database_secret_id
 }
 
-output "cos_artifact_registries" {
-  description = "Per-environment Artifact Registry paths for COS images."
-  value       = { for env, mod in module.cos : env => mod.artifact_registry }
+output "cos_artifact_registry" {
+  description = "Artifact Registry path for COS images."
+  value       = module.cos.artifact_registry
 }

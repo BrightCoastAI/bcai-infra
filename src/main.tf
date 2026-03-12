@@ -92,29 +92,18 @@ module "openclaw" {
   depends_on = [module.projects]
 }
 
-locals {
-  # Maps environment name to the COS profile (which determines secret
-  # naming prefix in Secret Manager).
-  cos_profiles = {
-    dev  = "dev"
-    prod = "adam"
-  }
-}
-
 module "cos" {
   source = "./cos"
 
-  for_each = module.projects.project_ids
-
-  project_id  = each.value
-  environment = each.key
+  project_id  = module.projects.project_ids["dev"]
+  environment = "dev"
   region      = var.default_region
-  cos_profile = local.cos_profiles[each.key]
+  cos_profile = "dev"
   labels = merge(
     local.base_labels,
     {
-      environment = each.key
-      cost_center = each.key
+      environment = "dev"
+      cost_center = "dev"
     }
   )
 }
