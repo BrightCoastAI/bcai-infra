@@ -117,17 +117,6 @@ resource "google_project_iam_member" "cos_runtime_roles" {
   member  = "serviceAccount:${google_service_account.cos.email}"
 }
 
-# ── Artifact Registry ────────────────────────────────────────────────────
-
-resource "google_artifact_registry_repository" "cos" {
-  project       = var.project_id
-  location      = var.region
-  repository_id = "cos"
-  description   = "COS container images for ${var.environment}"
-  format        = "DOCKER"
-  labels        = local.labels
-}
-
 # ── Cloud Run service ────────────────────────────────────────────────────
 
 resource "google_cloud_run_service" "cos" {

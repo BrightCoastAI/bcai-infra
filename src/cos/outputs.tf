@@ -19,6 +19,6 @@ output "database_secret_id" {
 }
 
 output "artifact_registry" {
-  description = "Artifact Registry repository for COS images."
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cos.repository_id}"
+  description = "Artifact Registry path for COS images."
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/cos"
 }
