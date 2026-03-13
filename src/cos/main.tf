@@ -190,24 +190,18 @@ resource "google_cloud_run_service" "cos" {
           }
         }
 
-        command = ["/opt/code/.venv/bin/python"]
+        command = ["/bin/sh"]
         args = [
           "-c",
           <<-EOT
-            import subprocess, sys, os, threading
-            os.environ["PYTHONPATH"] = "/opt/code:" + os.environ.get("PYTHONPATH", "")
-            port = os.environ.get("PORT", "8080")
-            threading.Thread(
-                target=lambda: subprocess.run(
-                    [sys.executable, "-m", "http.server", port],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                ),
-                daemon=True,
-            ).start()
-            sys.path.insert(0, "/opt/code")
-            from chief.cli import main
-            sys.argv = ["cos", "--profile", os.environ.get("COS_PROFILE", "dev"), "loop"]
-            main()
+            set -euo pipefail
+
+            VENV=/opt/code/.venv/bin/python
+
+            # Lightweight health endpoint for Cloud Run startup/liveness probes.
+            "$VENV" -m http.server "$${PORT:-8080}" >/tmp/health.log 2>&1 &
+
+            exec "$VENV" -m chief.cli --profile "$${COS_PROFILE:-dev}" telegram-poll
           EOT
         ]
       }
