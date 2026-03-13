@@ -383,12 +383,26 @@ resource "google_cloud_run_service" "prefect_worker" {
             # Lightweight health endpoint for Cloud Run readiness/liveness.
             python -m http.server "$${PORT}" >/tmp/health.log 2>&1 &
 
-            # Ensure Cloud Run worker type is available (no-op when using custom image).
-            pip install --no-cache-dir "prefect-gcp>=0.6.0" >/tmp/prefect-gcp-install.log 2>&1 || true
+            # Ensure Cloud Run V2 worker type is available.
+            pip install --no-cache-dir "prefect-gcp[cloud-run]>=0.6.0" >/tmp/prefect-gcp-install.log 2>&1 || true
 
-            # Create pool only if it doesn't exist yet (never --overwrite).
+            # Ensure pool exists as cloud-run-v2.  Migrate from V1 if needed.
+            python3 -c "
+import base64, os, httpx
+api = os.environ['PREFECT_API_URL'].rstrip('/')
+pool = os.environ['PREFECT_WORK_POOL_NAME']
+hdr = {}
+auth = os.environ.get('PREFECT_API_AUTH_STRING', '')
+if auth:
+    hdr['Authorization'] = f'Basic {base64.b64encode(auth.encode()).decode()}'
+r = httpx.get(f'{api}/work_pools/{pool}', headers=hdr, timeout=30)
+if r.status_code == 200 and r.json().get('type') == 'cloud-run':
+    print(f'Migrating pool {pool!r} from cloud-run -> cloud-run-v2')
+    httpx.delete(f'{api}/work_pools/{pool}', headers=hdr, timeout=30).raise_for_status()
+" 2>&1
+
             prefect work-pool inspect "$${POOL_NAME}" >/dev/null 2>&1 || \
-              prefect work-pool create "$${POOL_NAME}" --type cloud-run
+              prefect work-pool create "$${POOL_NAME}" --type cloud-run-v2
 
             # Patch the work pool base job template so spawned Cloud Run jobs
             # inherit the API URL, auth credentials, region, service account,
@@ -473,7 +487,7 @@ resource "google_cloud_run_service" "prefect_worker" {
                 print("Work pool template already up to date")
             PYEOF
 
-            prefect worker start --type cloud-run --pool "$${POOL_NAME}" --name "$${WORKER_NAME}"
+            prefect worker start --type cloud-run-v2 --pool "$${POOL_NAME}" --name "$${WORKER_NAME}"
           EOT
         ]
       }
