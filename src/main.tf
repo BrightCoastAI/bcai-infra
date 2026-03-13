@@ -71,16 +71,16 @@ module "prefect" {
 module "openclaw" {
   source = "./openclaw"
 
-  project_id           = module.projects.project_ids["prod"]
-  region               = var.default_region
-  zone                 = var.openclaw_zone
-  machine_type         = var.openclaw_machine_type
-  boot_disk_size_gb    = var.openclaw_disk_size_gb
-  subnet_cidr          = var.openclaw_subnet_cidr
-  ssh_source_ranges    = var.openclaw_ssh_source_ranges
-  enable_external_ip   = var.openclaw_enable_external_ip
-  app_token_secret_id  = var.openclaw_app_token_secret_id
-  bot_token_secret_id  = var.openclaw_bot_token_secret_id
+  project_id          = module.projects.project_ids["prod"]
+  region              = var.default_region
+  zone                = var.openclaw_zone
+  machine_type        = var.openclaw_machine_type
+  boot_disk_size_gb   = var.openclaw_disk_size_gb
+  subnet_cidr         = var.openclaw_subnet_cidr
+  ssh_source_ranges   = var.openclaw_ssh_source_ranges
+  enable_external_ip  = var.openclaw_enable_external_ip
+  app_token_secret_id = var.openclaw_app_token_secret_id
+  bot_token_secret_id = var.openclaw_bot_token_secret_id
   labels = merge(
     local.base_labels,
     {
@@ -90,6 +90,22 @@ module "openclaw" {
   )
 
   depends_on = [module.projects]
+}
+
+module "cos" {
+  source = "./cos"
+
+  project_id  = module.projects.project_ids["prod"]
+  environment = "prod"
+  region      = var.default_region
+  cos_profile = "dev"
+  labels = merge(
+    local.base_labels,
+    {
+      environment = "prod"
+      cost_center = "prod"
+    }
+  )
 }
 
 resource "google_project_iam_member" "ci_admin_access" {

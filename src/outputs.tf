@@ -95,3 +95,30 @@ output "buildkite_instance_group_manager" {
   description = "Managed instance group name powering Buildkite agents."
   value       = module.buildkite.instance_group_manager_name
 }
+
+# ── COS ──────────────────────────────────────────────────────────────────
+
+output "cos_service_url" {
+  description = "COS Cloud Run service URL."
+  value       = module.cos.service_url
+}
+
+output "cos_service_account" {
+  description = "Service account running COS."
+  value       = module.cos.service_account_email
+}
+
+output "cos_database_connection_name" {
+  description = "Cloud SQL instance connection name for COS."
+  value       = module.cos.database_connection_name
+}
+
+output "cos_database_secret" {
+  description = "Secret Manager ID containing the COS database URL."
+  value       = module.cos.database_secret_id
+}
+
+output "cos_artifact_registry" {
+  description = "Artifact Registry path for COS images."
+  value       = module.cos.artifact_registry
+}
