@@ -387,7 +387,7 @@ resource "google_cloud_run_service" "prefect_worker" {
             pip install --no-cache-dir "prefect-gcp[cloud-run]>=0.6.0" >/tmp/prefect-gcp-install.log 2>&1 || true
 
             # Ensure pool exists as cloud-run-v2.  Migrate from V1 if needed.
-            python3 -c "
+            python3 <<'MIGRATE'
 import base64, os, httpx
 api = os.environ['PREFECT_API_URL'].rstrip('/')
 pool = os.environ['PREFECT_WORK_POOL_NAME']
@@ -399,7 +399,7 @@ r = httpx.get(f'{api}/work_pools/{pool}', headers=hdr, timeout=30)
 if r.status_code == 200 and r.json().get('type') == 'cloud-run':
     print(f'Migrating pool {pool!r} from cloud-run -> cloud-run-v2')
     httpx.delete(f'{api}/work_pools/{pool}', headers=hdr, timeout=30).raise_for_status()
-" 2>&1
+MIGRATE
 
             prefect work-pool inspect "$${POOL_NAME}" >/dev/null 2>&1 || \
               prefect work-pool create "$${POOL_NAME}" --type cloud-run-v2
