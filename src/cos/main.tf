@@ -195,6 +195,10 @@ resource "google_cloud_run_service" "cos" {
           "-c",
           <<-EOT
             set -euo pipefail
+
+            export PATH="/opt/code/.venv/bin:$${PATH}"
+            export PYTHONPATH="/opt/code:$${PYTHONPATH:-}"
+
             PORT="$${PORT:-8080}"
             python -m http.server "$${PORT}" &>/dev/null &
             exec python -m chief.cli --profile "$${COS_PROFILE}" loop
