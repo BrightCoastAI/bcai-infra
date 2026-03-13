@@ -190,18 +190,24 @@ resource "google_cloud_run_service" "cos" {
           }
         }
 
-        command = ["/bin/sh"]
+        command = ["/opt/code/.venv/bin/python"]
         args = [
           "-c",
           <<-EOT
-            set -euo pipefail
-
-            export PATH="/opt/code/.venv/bin:$${PATH}"
-            export PYTHONPATH="/opt/code:$${PYTHONPATH:-}"
-
-            PORT="$${PORT:-8080}"
-            python -m http.server "$${PORT}" &>/dev/null &
-            exec python -m chief.cli --profile "$${COS_PROFILE}" loop
+            import subprocess, sys, os, threading
+            os.environ["PYTHONPATH"] = "/opt/code:" + os.environ.get("PYTHONPATH", "")
+            port = os.environ.get("PORT", "8080")
+            threading.Thread(
+                target=lambda: subprocess.run(
+                    [sys.executable, "-m", "http.server", port],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                ),
+                daemon=True,
+            ).start()
+            sys.path.insert(0, "/opt/code")
+            from chief.cli import main
+            sys.argv = ["cos", "--profile", os.environ.get("COS_PROFILE", "dev"), "loop"]
+            main()
           EOT
         ]
       }
